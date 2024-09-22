@@ -10,9 +10,9 @@ on:
 env:
   AZURE_RESOURCE_GROUP: Aks-rsg
   LOCATION: eastus  # or your preferred Azure region
-  BICEP_FILE_PATH: ./main.bicep  # Update this to your Bicep file path
+  BICEP_FILE_PATH: kubernetes/main.bicep  # Update this to your Bicep file path
   DOCKER_IMAGE_NAME: your-app-name
-  DOCKER_FILE_PATH: ./Dockerfile
+  DOCKER_FILE_PATH: Dockerfile
 
 jobs:
   deploy-infrastructure:
