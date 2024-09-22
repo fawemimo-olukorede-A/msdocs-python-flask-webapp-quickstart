@@ -18,7 +18,7 @@ param aksSubnetName string = 'GT-aksSubnet'
 param aksSubnetPrefix string = '10.0.1.0/24'
 param wafSubnetName string = 'wafSubnet'
 param wafSubnetPrefix string = '10.0.2.0/26'
-param keyVaultName string = 'GTkeyvault23456777777'
+param keyVaultName string = 'GTkeyvault23456777777889'
 param acrName string = 'GTAzureContainerRegistry'
 
 // New parameters for Key Vault Private Link
