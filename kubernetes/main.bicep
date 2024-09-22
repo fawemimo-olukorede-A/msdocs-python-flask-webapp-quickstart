@@ -17,7 +17,7 @@ param aksSubnetName string = 'GT-aksSubnet'
 param aksSubnetPrefix string = '192.168.1.0/24'
 param wafSubnetName string = 'wafSubnet'
 param wafSubnetPrefix string = '192.168.2.0/26'
-param keyVaultName string = 'Gtkeyvault2345632'
+param keyVaultName string = 'Gtkeyvault23894'
 param acrName string = 'GTAzureContainerRegistry'
 
 // New parameters for NSGs and Azure CNI
