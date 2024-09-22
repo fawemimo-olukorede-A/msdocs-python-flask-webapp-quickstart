@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_RESOURCE_GROUP: Aks-rsg
+  AZURE_RESOURCE_GROUP: Akscluster-rsg
   LOCATION: eastus  # or your preferred Azure region
   BICEP_FILE_PATH: kubernetes/main.bicep  # Update this to your Bicep file path
   DOCKER_IMAGE_NAME: your-app-name
