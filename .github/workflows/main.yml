@@ -61,13 +61,18 @@ jobs:
     - name: Get ACR info
       run: |
           echo "Fetching ACR info..."
-          ACR_NAME=$(az acr list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[0].name" -o tsv)
+          ACR_NAME=$(az acr list --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" --query "[0].name" -o tsv)
+          if [ $? -ne 0 ]; then
+          echo "Error: Failed to execute az acr list command."
+          exit 1
+          fi
           if [ -z "$ACR_NAME" ]; then
           echo "Error: Failed to fetch ACR name. Make sure the resource group exists and contains an Azure Container Registry."
-           exit 1
-           fi
+          exit 1
+          fi
            echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
-           echo "ACR name set to: $ACR_NAME
+           echo "ACR name set to: $ACR_NAME"
+    
         
     - run: |
         docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} -f ${{ env.DOCKER_FILE_PATH }} .
