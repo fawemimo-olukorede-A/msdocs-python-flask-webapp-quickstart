@@ -13,22 +13,17 @@ param location string = resourceGroup().location
 param clusterName string = 'GT-AKSCluster'
 param appGatewayPublicIpName string = 'GT-AppGatewayPublicIP'
 param vnetName string = 'GT-VNet'
-param vnetAddressPrefix string = '10.0.0.0/16'
+param vnetAddressPrefix string = '192.168.0.0/16'
 param aksSubnetName string = 'GT-aksSubnet'
-param aksSubnetPrefix string = '10.0.1.0/24'
+param aksSubnetPrefix string = '192.168.1.0/24'
 param wafSubnetName string = 'wafSubnet'
-param wafSubnetPrefix string = '10.0.2.0/26'
-param keyVaultName string = 'GTkeyvault23456777777889'
+param wafSubnetPrefix string = '192.168.2.0/26'
 param acrName string = 'GTAzureContainerRegistry'
-
-// New parameters for Key Vault Private Link
-param keyVaultPrivateEndpointName string = 'GT-KeyVaultPrivateEndpoint'
-param keyVaultPrivateDnsZoneName string = 'privatelink.vaultcore.azure.net'
 
 // Updated CIDR ranges for AKS
 param podCidr string = '10.244.0.0/16'
-param serviceCidr string = '172.16.0.0/16'  // Changed to avoid overlap
-param dnsServiceIP string = '172.16.0.10' 
+param serviceCidr string = '10.0.0.0/16'  // Changed to avoid overlap
+param dnsServiceIP string = '10.0.0.10' 
 // Virtual Network
 resource vnet 'Microsoft.Network/virtualNetworks@2024-01-01' = {
   name: vnetName
@@ -259,38 +254,6 @@ resource Webappfirewallpolicy 'Microsoft.Network/ApplicationGatewayWebApplicatio
   }
 }
 
-// Key Vault
-resource keyVault 'Microsoft.KeyVault/vaults@2024-04-01-preview' = {
-  name: keyVaultName
-  location: location
-  properties: {
-    enabledForDeployment: true
-    enabledForTemplateDeployment: true
-    enabledForDiskEncryption: true
-    tenantId: subscription().tenantId
-    accessPolicies: [
-      {
-        tenantId: subscription().tenantId
-        objectId: aks.identity.principalId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-          ]
-        }
-      }
-    ]
-    sku: {
-      name: 'standard'
-      family: 'A'
-    }
-    networkAcls: {
-      defaultAction: 'Deny'
-      bypass: 'AzureServices'
-    }
-  }
-}
-
 // Azure Container Registry
 resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
   name: acrName
@@ -359,54 +322,11 @@ resource acrPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZo
   }
 }
 
-// Key Vault Private DNS Zone
-resource keyVaultPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: keyVaultPrivateDnsZoneName
-  location: 'global'
-}
 
-// Key Vault Private Endpoint
-resource keyVaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-01-01' = {
-  name: keyVaultPrivateEndpointName
-  location: location
-  properties: {
-    subnet: {
-      id: aksSubnet.id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: '${keyVaultName}-connection'
-        properties: {
-          privateLinkServiceId: keyVault.id
-          groupIds: [
-            'vault'
-          ]
-        }
-      }
-    ]
-  }
-}
-
-// Key Vault Private DNS Zone Group
-resource keyVaultPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-01-01' = {
-  parent: keyVaultPrivateEndpoint
-  name: 'keyVaultPrivateDnsZoneGroup'
-  properties: {
-    privateDnsZoneConfigs: [
-      {
-        name: 'config'
-        properties: {
-          privateDnsZoneId: keyVaultPrivateDnsZone.id
-        }
-      }
-    ]
-  }
-}
 
 // Outputs
 output aksName string = aks.name
 output acrLoginServer string = acr.properties.loginServer
-output keyVaultName string = keyVault.name
 output vnetName string = vnet.name
 output aksSubnetName string = aksSubnet.name
 output wafSubnetName string = wafSubnet.name
