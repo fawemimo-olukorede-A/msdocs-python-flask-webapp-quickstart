@@ -35,7 +35,7 @@ jobs:
 
     - name: Get AKS and ACR info
       run: |
-        docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} -f ${{ env.DOCKER_FILE_PATH }} .
+        docker build -t gtazurecontainerregistry.azurecr.io/your-app-name:2dcb49edc5d2d5c19d62d55443c21736fb26d01d -f Dockerfile .
         AKS_NAME=$(az aks list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[0].name" -o tsv)
         ACR_NAME=$(az acr list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[0].name" -o tsv)
         echo "AKS_CLUSTER_NAME=$AKS_NAME" >> $GITHUB_ENV
