@@ -1,5 +1,4 @@
 // Parameters
-
 param dnsPrefix string = 'ClusterDnsprefix'
 @minValue(0)
 @maxValue(1023)
@@ -18,12 +17,16 @@ param aksSubnetName string = 'GT-aksSubnet'
 param aksSubnetPrefix string = '192.168.1.0/24'
 param wafSubnetName string = 'wafSubnet'
 param wafSubnetPrefix string = '192.168.2.0/26'
+param keyVaultName string = 'Gtkeyvault23456732'
 param acrName string = 'GTAzureContainerRegistry'
 
-// Updated CIDR ranges for AKS
-param podCidr string = '10.244.0.0/16'
-param serviceCidr string = '10.0.0.0/16'  // Changed to avoid overlap
-param dnsServiceIP string = '10.0.0.10' 
+// New parameters for NSGs and Azure CNI
+param aksNsgName string = 'aks-nsg'
+param wafNsgName string = 'waf-nsg'
+param podCidr string = '192.168.3.0/24'
+param serviceCidr string = '192.168.4.0/24'
+param dnsServiceIP string = '192.168.4.10'
+
 // Virtual Network
 resource vnet 'Microsoft.Network/virtualNetworks@2024-01-01' = {
   name: vnetName
@@ -37,6 +40,65 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-01-01' = {
   }
 }
 
+// Network Security Group for AKS Subnet
+resource aksNsg 'Microsoft.Network/networkSecurityGroups@2024-01-01' = {
+  name: aksNsgName
+  location: location
+  properties: {
+    securityRules: [
+      {
+        name: 'allow-https-from-waf'
+        properties: {
+          priority: 100
+          access: 'Allow'
+          direction: 'Inbound'
+          protocol: 'Tcp'
+          sourceAddressPrefix: wafSubnetPrefix
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '443'
+        }
+      }
+    ]
+  }
+}
+
+// Network Security Group for WAF Subnet
+resource wafNsg 'Microsoft.Network/networkSecurityGroups@2024-01-01' = {
+  name: wafNsgName
+  location: location
+  properties: {
+    securityRules: [
+      {
+        name: 'allow-gateway-manager'
+        properties: {
+          priority: 100
+          access: 'Allow'
+          direction: 'Inbound'
+          protocol: '*'
+          sourceAddressPrefix: 'GatewayManager'
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '65200-65535'
+        }
+      }
+      {
+        name: 'allow-load-balancer'
+        properties: {
+          priority: 110
+          access: 'Allow'
+          direction: 'Inbound'
+          protocol: '*'
+          sourceAddressPrefix: 'AzureLoadBalancer'
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '*'
+        }
+      }
+    ]
+  }
+}
+
 // AKS Subnet
 resource aksSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-01-01' = {
   parent: vnet
@@ -44,6 +106,9 @@ resource aksSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-01-01' = {
   properties: {
     addressPrefix: aksSubnetPrefix
     privateEndpointNetworkPolicies: 'Disabled'
+    networkSecurityGroup: {
+      id: aksNsg.id
+    }
   }
 }
 
@@ -53,10 +118,13 @@ resource wafSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-01-01' = {
   name: wafSubnetName
   properties: {
     addressPrefix: wafSubnetPrefix
+    networkSecurityGroup: {
+      id: wafNsg.id
+    }
   }
 }
 
-//public-ip
+// Public IP for Application Gateway
 resource appGatewayPublicIP 'Microsoft.Network/publicIPAddresses@2024-01-01' = {
   name: appGatewayPublicIpName
   location: location
@@ -78,7 +146,8 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-02-01' = {
   properties: {
     dnsPrefix: dnsPrefix
     networkProfile: {
-      networkPlugin: 'kubenet'
+      networkPlugin: 'azure'
+      networkPolicy: 'azure'
       podCidr: podCidr
       serviceCidr: serviceCidr
       dnsServiceIP: dnsServiceIP
@@ -91,7 +160,7 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-02-01' = {
         vmSize: agentVMSize
         osType: 'Linux'
         mode: 'System'
-        vnetSubnetID:  aksSubnet.id
+        vnetSubnetID: aksSubnet.id
       }
     ]
     linuxProfile: {
@@ -131,7 +200,6 @@ resource myAppGateway 'Microsoft.Network/applicationGateways@2024-01-01' = {
       {
         name: 'appGwPublicFrontendIp'
         properties: {
-          privateIPAllocationMethod: 'Dynamic'
           publicIPAddress: {
             id: appGatewayPublicIP.id
           }
@@ -150,6 +218,14 @@ resource myAppGateway 'Microsoft.Network/applicationGateways@2024-01-01' = {
       {
         name: 'myBackendPool'
         properties: {
+          backendAddresses: [
+            {
+              ipAddress: '192.168.1.10'
+            }
+            {
+              ipAddress: '192.168.1.11'
+            }
+          ]
         }
       }
     ]
@@ -169,9 +245,6 @@ resource myAppGateway 'Microsoft.Network/applicationGateways@2024-01-01' = {
       {
         name: 'myListener'
         properties: {
-          firewallPolicy: {
-            id: Webappfirewallpolicy.id
-          }
           frontendIPConfiguration: {
             id: resourceId('Microsoft.Network/applicationGateways/frontendIPConfigurations', 'GTAppgateway', 'appGwPublicFrontendIp')
           }
@@ -207,9 +280,11 @@ resource myAppGateway 'Microsoft.Network/applicationGateways@2024-01-01' = {
     }
   }
   dependsOn: [
+    aks
   ]
 }
 
+// Web Application Firewall Policy
 resource Webappfirewallpolicy 'Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies@2024-01-01' = {
   name: 'GT-webFirewall'
   location: location
@@ -254,6 +329,38 @@ resource Webappfirewallpolicy 'Microsoft.Network/ApplicationGatewayWebApplicatio
   }
 }
 
+// Key Vault
+resource keyVault 'Microsoft.KeyVault/vaults@2024-04-01-preview' = {
+  name: keyVaultName
+  location: location
+  properties: {
+    enabledForDeployment: true
+    enabledForTemplateDeployment: true
+    enabledForDiskEncryption: true
+    tenantId: subscription().tenantId
+    accessPolicies: [
+      {
+        tenantId: subscription().tenantId
+        objectId: aks.identity.principalId
+        permissions: {
+          secrets: [
+            'get'
+            'list'
+          ]
+        }
+      }
+    ]
+    sku: {
+      name: 'standard'
+      family: 'A'
+    }
+    networkAcls: {
+      defaultAction: 'Deny'
+      bypass: 'AzureServices'
+    }
+  }
+}
+
 // Azure Container Registry
 resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
   name: acrName
@@ -269,18 +376,18 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
 
 // Grant AKS pull access to ACR
 resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, acr.id, 'acrpull')
+  name: guid(aks.id, acr.id, 'acrpull')
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
     principalId: aks.properties.identityProfile.kubeletidentity.objectId
     principalType: 'ServicePrincipal'
   }
-  scope: keyVault
+  scope: acr
 }
 
 // Private DNS Zone for ACR
 resource acrPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: 'GT-privatelink.azurecr.io'
+  name: 'privatelink.azurecr.io'
   location: 'global'
 }
 
@@ -309,7 +416,7 @@ resource acrPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-01-01' = {
 // Private DNS Zone Group for ACR
 resource acrPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-01-01' = {
   parent: acrPrivateEndpoint
-  name: 'GT-acrPrivateDnsZoneGroup'
+  name: 'acrPrivateDnsZoneGroup'
   properties: {
     privateDnsZoneConfigs: [
       {
@@ -322,11 +429,54 @@ resource acrPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZo
   }
 }
 
+// Key Vault Private DNS Zone
+resource keyVaultPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+  name: 'privatelink.vaultcore.azure.net'
+  location: 'global'
+}
 
+// Key Vault Private Endpoint
+resource keyVaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-01-01' = {
+  name: '${keyVaultName}-endpoint'
+  location: location
+  properties: {
+    subnet: {
+      id: aksSubnet.id
+    }
+    privateLinkServiceConnections: [
+      {
+        name: '${keyVaultName}-connection'
+        properties: {
+          privateLinkServiceId: keyVault.id
+          groupIds: [
+            'vault'
+          ]
+        }
+      }
+    ]
+  }
+}
+
+// Key Vault Private DNS Zone Group
+resource keyVaultPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-01-01' = {
+  parent: keyVaultPrivateEndpoint
+  name: 'keyVaultPrivateDnsZoneGroup'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'config'
+        properties: {
+          privateDnsZoneId: keyVaultPrivateDnsZone.id
+        }
+      }
+    ]
+  }
+}
 
 // Outputs
 output aksName string = aks.name
 output acrLoginServer string = acr.properties.loginServer
+output keyVaultName string = keyVault.name
 output vnetName string = vnet.name
 output aksSubnetName string = aksSubnet.name
 output wafSubnetName string = wafSubnet.name
