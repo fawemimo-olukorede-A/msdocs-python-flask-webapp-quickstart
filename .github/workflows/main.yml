@@ -13,26 +13,11 @@ env:
   DOCKER_IMAGE_NAME: your-app-name
   DOCKER_FILE_PATH: Dockerfile
   ACR_NAME: GTAzureContainerRegistry
-  AKS_CLUSTER_NAME: GT-AKSCluster  # Add this line with your AKS cluster name
+  AKS_CLUSTER_NAME: your-aks-cluster-name
 
 jobs:
   deploy-infrastructure:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-      
-      - name: Deploy Bicep file
-        uses: azure/arm-deploy@v1
-        with:
-          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: ${{ env.AZURE_RESOURCE_GROUP }}
-          template: ${{ env.BICEP_FILE_PATH }}
-          failOnStdErr: false
+    # ... (unchanged)
 
   build-and-push:
     runs-on: ubuntu-latest
@@ -49,6 +34,11 @@ jobs:
       - name: Log in to ACR
         run: |
           az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
         
       - name: Build and push Docker image
         run: |
@@ -74,4 +64,7 @@ jobs:
             kubernetes/deployment.yaml
             kubernetes/service.yaml
           namespace: default
-      
+        
+      - name: Azure Logout
+        if: always()
+        run: az logout
