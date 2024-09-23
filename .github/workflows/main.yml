@@ -51,6 +51,11 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     
+    - name: Update ACR Firewall Rules
+      run: |
+        az acr update --name ${{ env.ACR_NAME }} --default-action Allow --public-network-access Enabled
+        az acr network-rule add --name ${{ env.ACR_NAME }} --ip-address 0.0.0.0/0 --action Allow
+
     - name: Build and push image to ACR
       uses: azure/docker-login@v1
       with:
@@ -73,7 +78,6 @@ jobs:
            echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
            echo "ACR name set to: $ACR_NAME"
     
-        
     - run: |
         docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} -f ${{ env.DOCKER_FILE_PATH }} .
         docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
