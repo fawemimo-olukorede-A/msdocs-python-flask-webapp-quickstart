@@ -72,11 +72,6 @@ jobs:
           fi
            echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
            echo "ACR name set to: $ACR_NAME"
-    
-    - run: |
-        docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:latest .
-
-        docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:latest
 
       
     - name: Set AKS context
