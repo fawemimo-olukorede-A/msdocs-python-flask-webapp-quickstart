@@ -41,6 +41,19 @@ jobs:
         echo "AKS_CLUSTER_NAME=$AKS_NAME" >> $GITHUB_ENV
         echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
 
+        - name: Add GitHub Actions IP to ACR
+         run: |
+          az acr network-rule add --name ${{ env.ACR_NAME }} --ip-address ${{ runner.ip }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
+
+          - name: Allow GitHub Actions IP range
+             run: |
+              GITHUB_ACTIONS_IPRANGE=$(curl -s https://api.github.com/meta | jq -r '.actions | join(",")')
+    
+              IFS=',' read -ra IP_ARRAYS <<< "$GITHUB_ACTIONS_IPRANGE"
+               for IP in "${IP_ARRAYS[@]}"; do
+               az acr network-rule add --name ${{ env.ACR_NAME }} --ip-address "$IP" --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
+              done
+
     - name: Build and push image to ACR
       uses: azure/docker-login@v1
       with:
