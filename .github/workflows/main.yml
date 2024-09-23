@@ -74,7 +74,10 @@ jobs:
            echo "ACR name set to: $ACR_NAME"
     
     - run: |
-        docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} -f ${{ env.DOCKER_FILE_PATH }}
+        docker buildx build --cache-from=type=registry,ref=${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:cache \
+                            --cache-to=type=inline \
+                            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} \
+                            -f ${{ env.DOCKER_FILE_PATH }} .
         docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
     
     - name: Set AKS context
