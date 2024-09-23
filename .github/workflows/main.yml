@@ -86,3 +86,8 @@ jobs:
           kubernetes/deployment.yaml
           kubernetes/service.yaml
         namespace: default
+
+    - name: Azure Logout
+      run: |
+        az logout
+      if: always()
