@@ -40,6 +40,13 @@ jobs:
         echo "AKS_CLUSTER_NAME=$AKS_NAME" >> $GITHUB_ENV
         echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
 
+
+        - name: Authenticate with Private ACR
+          run: |
+        az acr login --name ${{ env.ACR_NAME }}
+        az acr update --name ${{ env.ACR_NAME }} --default-action Allow
+
+
     - name: Build and push image to ACR
       run: |
         docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} -f ${{ env.DOCKER_FILE_PATH }} .
