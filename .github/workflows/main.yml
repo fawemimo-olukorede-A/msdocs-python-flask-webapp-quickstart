@@ -1,5 +1,4 @@
 name: Deploy Infrastructure and Application to Azure
-
 on:
   push:
     branches: [ "main" ]
@@ -9,8 +8,8 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: Akscluster-rsg
-  LOCATION: eastus  # or your preferred Azure region
-  BICEP_FILE_PATH: kubernetes/main.bicep  # Update this to your Bicep file path
+  LOCATION: eastus
+  BICEP_FILE_PATH: kubernetes/main.bicep
   DOCKER_IMAGE_NAME: your-app-name
   DOCKER_FILE_PATH: Dockerfile
   AKS_CLUSTER_NAME: GT-AKSCluster
@@ -34,63 +33,10 @@ jobs:
         template: ${{ env.BICEP_FILE_PATH }}
         failOnStdErr: false
 
-    - name: Get AKS and ACR info
+    - name: Get AKS info
       run: |
         AKS_NAME=$(az aks list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[0].name" -o tsv)
-        ACR_NAME=$(az acr list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[0].name" -o tsv)
         echo "AKS_CLUSTER_NAME=$AKS_NAME" >> $GITHUB_ENV
-        echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
-
-        - name: Add GitHub Actions IP to ACR
-         run: |
-          az acr network-rule add --name ${{ env.ACR_NAME }} --ip-address ${{ runner.ip }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
-
-          - name: Allow GitHub Actions IP range
-             run: |
-              GITHUB_ACTIONS_IPRANGE=$(curl -s https://api.github.com/meta | jq -r '.actions | join(",")')
-    
-              IFS=',' read -ra IP_ARRAYS <<< "$GITHUB_ACTIONS_IPRANGE"
-               for IP in "${IP_ARRAYS[@]}"; do
-               az acr network-rule add --name ${{ env.ACR_NAME }} --ip-address "$IP" --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
-              done
-
-    - name: Build and push image to ACR
-      uses: azure/docker-login@v1
-      with:
-        login-server: ${{ env.ACR_NAME }}.azurecr.io
-        username: ${{ secrets.AZURE_CLIENT_ID }}
-        password: ${{ secrets.AZURE_CLIENT_SECRET }}
-
-    - name: Build and push Docker image to ACR
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ${{ env.DOCKER_FILE_PATH }}
-        push: true
-        tags: ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
-
-    - name: Set AKS context
-      uses: azure/aks-set-context@v3
-      with:
-        resource-group: ${{ env.AZURE_RESOURCE_GROUP }}
-        cluster-name: ${{ env.AKS_CLUSTER_NAME }}
-    
-    - name: Update Kubernetes manifests
-      run: |
-        sed -i 's|{{IMAGE_NAME}}|${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}|g' kubernetes/deployment.yaml
-    
-    - name: Deploy to AKS
-      uses: azure/k8s-deploy@v4
-      with:
-        manifests: |
-          kubernetes/deployment.yaml
-          kubernetes/service.yaml
-        namespace: default
-
-    - name: Azure Logout
-      run: |
-        az logout
-      if: always()
 
     - name: Log in to Docker Hub
       uses: docker/login-action@v2
@@ -104,4 +50,27 @@ jobs:
         context: .
         file: ${{ env.DOCKER_FILE_PATH }}
         push: true
-        tags: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
+        tags: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
+
+    - name: Set AKS context
+      uses: azure/aks-set-context@v3
+      with:
+        resource-group: ${{ env.AZURE_RESOURCE_GROUP }}
+        cluster-name: ${{ env.AKS_CLUSTER_NAME }}
+    
+    - name: Update Kubernetes manifests
+      run: |
+        sed -i 's|{{IMAGE_NAME}}|${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}|g' kubernetes/deployment.yaml
+    
+    - name: Deploy to AKS
+      uses: azure/k8s-deploy@v4
+      with:
+        manifests: |
+          kubernetes/deployment.yaml
+          kubernetes/service.yaml
+        namespace: default
+
+    - name: Azure Logout
+      run: |
+        az logout
+      if: always()
