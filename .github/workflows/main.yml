@@ -20,12 +20,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-
+    
     - name: Azure Login
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
-
+    
     - name: Deploy Bicep file
       uses: azure/arm-deploy@v1
       with:
@@ -34,16 +34,15 @@ jobs:
         template: ${{ env.BICEP_FILE_PATH }}
         failOnStdErr: false
 
-    - name: Log in to ACR
-      uses: azure/docker-login@v1
-      with:
-        login-server: ${{ env.ACR_NAME }}.azurecr.io
-        username: ${{ secrets.AZURE_CLIENT_ID }}
-        password: ${{ secrets.AZURE_CLIENT_SECRET }}
-
-    - name: Build and push Docker image to ACR
+    - name: Login to ACR and Build & Push Docker Image
       run: |
+        # Login to Azure ACR
+        az acr login --name ${{ env.ACR_NAME }}
+        
+        # Build Docker image
         docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} -f ${{ env.DOCKER_FILE_PATH }} .
+        
+        # Push Docker image to ACR
         docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
 
     - name: Set AKS context
