@@ -40,10 +40,16 @@ jobs:
         echo "AKS_CLUSTER_NAME=$AKS_NAME" >> $GITHUB_ENV
         echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
 
-    - name: Build and push image to ACR
-      run: |
-        docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} -f ${{ env.DOCKER_FILE_PATH }} .
-        docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
+
+    - task: Docker@2
+        
+       inputs:
+       containerRegistry: 'testerconnection'
+       repository: 'gtazurecontainerregistry.azurecr.io/pythonapp'
+       command: 'build and push'
+       Dockerfile: 'Dockerfile'
+       tag: 'latest'
+      
 
     - name: Set AKS context
       uses: azure/aks-set-context@v3
