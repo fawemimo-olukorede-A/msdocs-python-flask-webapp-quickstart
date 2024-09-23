@@ -315,49 +315,6 @@ resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-
   scope: keyVault
 }
 
-// Private DNS Zone for ACR
-resource acrPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: 'GT-privatelink.azurecr.io'
-  location: 'global'
-}
-
-// Private Endpoint for ACR
-resource acrPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-01-01' = {
-  name: '${acrName}-endpoint'
-  location: location
-  properties: {
-    subnet: {
-      id: aksSubnet.id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: '${acrName}-connection'
-        properties: {
-          privateLinkServiceId: acr.id
-          groupIds: [
-            'registry'
-          ]
-        }
-      }
-    ]
-  }
-}
-
-// Private DNS Zone Group for ACR
-resource acrPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-01-01' = {
-  parent: acrPrivateEndpoint
-  name: 'GT-acrPrivateDnsZoneGroup'
-  properties: {
-    privateDnsZoneConfigs: [
-      {
-        name: 'config'
-        properties: {
-          privateDnsZoneId: acrPrivateDnsZone.id
-        }
-      }
-    ]
-  }
-}
 
 // Key Vault Private DNS Zone
 resource keyVaultPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
