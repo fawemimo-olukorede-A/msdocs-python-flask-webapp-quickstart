@@ -40,16 +40,13 @@ jobs:
         echo "AKS_CLUSTER_NAME=$AKS_NAME" >> $GITHUB_ENV
         echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
 
-
-    - task: Docker@2
-        
-       inputs:
-       containerRegistry: 'testerconnection'
-       repository: 'gtazurecontainerregistry.azurecr.io/pythonapp'
-       command: 'build and push'
-       Dockerfile: 'Dockerfile'
-       tag: 'latest'
-      
+    - name: Build and push Docker image to ACR
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: ${{ env.DOCKER_FILE_PATH }}
+        push: true
+        tags: ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:latest
 
     - name: Set AKS context
       uses: azure/aks-set-context@v3
@@ -59,7 +56,7 @@ jobs:
 
     - name: Update Kubernetes manifests
       run: |
-        sed -i 's|{{IMAGE_NAME}}|${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}|g' kubernetes/deployment.yaml
+        sed -i 's|{{IMAGE_NAME}}|${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:latest|g' kubernetes/deployment.yaml
 
     - name: Deploy to AKS
       uses: azure/k8s-deploy@v4
