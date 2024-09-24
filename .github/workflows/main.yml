@@ -9,10 +9,12 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: Akscluster-rsg
-  LOCATION: uk south  # or your preferred Azure region
-  BICEP_FILE_PATH: ./kubernetes/main.bicep  # Update this to your Bicep file path
+  LOCATION: uk south
+  BICEP_FILE_PATH: ./kubernetes/main.bicep
   DOCKER_IMAGE_NAME: your-app-name
   DOCKER_FILE_PATH: Dockerfile
+  AKS_CLUSTER_NAME: your-aks-cluster-name
+  ACR_NAME: gtazureContainerRegistry
 
 jobs:
   deploy-infrastructure:
@@ -35,44 +37,30 @@ jobs:
 
   build-and-push:
     runs-on: ubuntu-latest
-    needs: deploy-infrastructure  
+    needs: deploy-infrastructure
     steps:
-      # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Log in to Azure
-      - name: Log in to Azure
+      - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Log in to ACR
-      - name: Log in to ACR
+      - name: Build and push image to ACR
         run: |
-          az acr login --name gtazureContainerRegistry
-          az role assignment create --assignee 1272275b-609a-4d5d-9cd8-293c27dbdccd --role AcrPush --scope /subscriptions/e25914b4-ce7f-4981-b530-a454384a0641/resourceGroups/Akscluster-rsg/providers/Microsoft.ContainerRegistry/registries/gtazureContainerRegistry
-          az role assignment create --assignee 1272275b-609a-4d5d-9cd8-293c27dbdccd --scope /subscriptions/e25914b4-ce7f-4981-b530-a454384a0641/resourceGroups/Akscluster-rsg/providers/Microsoft.ContainerRegistry/registries/gtazureContainerRegistry --role AcrPush
+          az acr build --image ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} --registry ${{ env.ACR_NAME }} --file Dockerfile .
 
-      # Build and push the Docker image
-      - name: Build and push Docker image
-        run: |
-          docker build -t gtazureContainerRegistry.azurecr.io/your-app-name:latest -f Dockerfile .
-          docker push gtazureContainerRegistry.azurecr.io/your-app-name:latest
-
-      # Set AKS context
       - name: Set AKS context
         uses: azure/aks-set-context@v3
         with:
           resource-group: ${{ env.AZURE_RESOURCE_GROUP }}
           cluster-name: ${{ env.AKS_CLUSTER_NAME }}
 
-      # Update Kubernetes manifests
       - name: Update Kubernetes manifests
         run: |
-          sed -i 's|{{IMAGE_NAME}}|${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:latest|g' kubernetes/deployment.yaml
+          sed -i 's|{{IMAGE_NAME}}|${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}|g' kubernetes/deployment.yaml
 
-      # Deploy to AKS
       - name: Deploy to AKS
         uses: azure/k8s-deploy@v4
         with:
@@ -81,7 +69,6 @@ jobs:
             kubernetes/service.yaml
           namespace: default
 
-      # Azure Logout
       - name: Azure Logout
         run: |
           az logout
