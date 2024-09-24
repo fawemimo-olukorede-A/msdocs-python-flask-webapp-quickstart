@@ -7,7 +7,7 @@ param osDiskSizeGB int = 0
 @minValue(1)
 @maxValue(50)
 param agentCount int = 3
-param agentVMSize string = 'standard_d2s_v2'
+param agentVMSize string = 'standard_d2s_v3'
 param linuxAdminUsername string = 'GT-test'
 param location string = resourceGroup().location
 param clusterName string = 'GT-AKSCluster'
