@@ -9,11 +9,11 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: Akscluster-rsg
-  LOCATION: uk west
+  LOCATION: uk south
   BICEP_FILE_PATH: ./kubernetes/main.bicep
   DOCKER_IMAGE_NAME: your-app-name
   DOCKER_FILE_PATH: Dockerfile
-  AKS_CLUSTER_NAME: your-aks-cluster-name
+  AKS_CLUSTER_NAME: GT-AKSCluster
   ACR_NAME: gtazureContainerRegistry
 
 jobs:
@@ -49,8 +49,7 @@ jobs:
 
       - name: Build and push image to ACR
         run: |
-          az acr build --image ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} --registry ${{ env.ACR_NAME }} --file ${{ env.DOCKER_FILE_PATH }} .
-
+          az acr build --image ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} --registry ${{ env.ACR_NAME }} --file Dockerfile .
       - name: Set AKS context
         uses: azure/aks-set-context@v3
         with:
@@ -60,7 +59,6 @@ jobs:
       - name: Update Kubernetes manifests
         run: |
           sed -i 's|{{IMAGE_NAME}}|${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}|g' kubernetes/deployment.yaml
-
       - name: Deploy to AKS
         uses: azure/k8s-deploy@v4
         with:
