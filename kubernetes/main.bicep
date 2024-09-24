@@ -7,7 +7,7 @@ param osDiskSizeGB int = 0
 @minValue(1)
 @maxValue(50)
 param agentCount int = 3
-param agentVMSize string = 'standard_d2s_v3'
+param agentVMSize string = 'standard_d2s_v2'
 param linuxAdminUsername string = 'GT-test'
 param location string = resourceGroup().location
 param clusterName string = 'GT-AKSCluster'
@@ -18,7 +18,7 @@ param aksSubnetName string = 'GT-aksSubnet'
 param aksSubnetPrefix string = '192.168.1.0/24'
 param wafSubnetName string = 'wafSubnet'
 param wafSubnetPrefix string = '192.168.2.0/26'
-param keyVaultName string = 'GTkeyvault673756445'
+param keyVaultName string = 'GTkeyvault673754896445'
 param acrName string = 'GTAzureContainerRegistry'
 
 // New parameters for Key Vault Private Link
@@ -27,7 +27,7 @@ param keyVaultPrivateDnsZoneName string = 'privatelink.vaultcore.azure.net'
 
 // Updated CIDR ranges for AKS
 param podCidr string = '10.244.0.0/16'
-param serviceCidr string = '10.0.0.0/16'  // Changed to avoid overlap
+param serviceCidr string = '10.0.0.0/16'  
 param dnsServiceIP string = '10.0.0.10' 
 // Virtual Network
 resource vnet 'Microsoft.Network/virtualNetworks@2024-01-01' = {
