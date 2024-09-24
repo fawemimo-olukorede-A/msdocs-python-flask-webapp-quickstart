@@ -49,7 +49,7 @@ jobs:
 
       - name: Build and push image to ACR
         run: |
-          az acr build --image ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} --registry ${{ env.ACR_NAME }} --file Dockerfile .
+          az acr build --image ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} --registry ${{ env.ACR_NAME }} --file ${{ env.DOCKER_FILE_PATH }} .
 
       - name: Set AKS context
         uses: azure/aks-set-context@v3
