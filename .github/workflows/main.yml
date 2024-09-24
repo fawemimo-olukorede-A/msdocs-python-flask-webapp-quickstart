@@ -13,7 +13,6 @@ env:
   BICEP_FILE_PATH: ./kubernetes/main.bicep  # Update this to your Bicep file path
   DOCKER_IMAGE_NAME: your-app-name
   DOCKER_FILE_PATH: Dockerfile
-  ACR_NAME: GTAzureContainerRegistry
 
 jobs:
   deploy-infrastructure:
@@ -51,7 +50,7 @@ jobs:
       # Log in to ACR
       - name: Log in to ACR
         run: |
-          az acr login --name ${{ env.ACR_NAME }}
+          az acr login --name gtazureContainerRegistry
 
       # Build and push the Docker image
       - name: Build and push Docker image
