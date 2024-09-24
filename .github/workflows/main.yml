@@ -9,7 +9,7 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: Akscluster-rsg
-  LOCATION: uk south
+  LOCATION: uk west
   BICEP_FILE_PATH: ./kubernetes/main.bicep
   DOCKER_IMAGE_NAME: your-app-name
   DOCKER_FILE_PATH: Dockerfile
