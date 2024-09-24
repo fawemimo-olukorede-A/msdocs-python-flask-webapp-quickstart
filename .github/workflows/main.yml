@@ -51,12 +51,13 @@ jobs:
       - name: Log in to ACR
         run: |
           az acr login --name gtazureContainerRegistry
+          az role assignment create --assignee 1272275b-609a-4d5d-9cd8-293c27dbdccd --role AcrPush --scope /subscriptions/e25914b4-ce7f-4981-b530-a454384a0641/resourceGroups/Akscluster-rsg/providers/Microsoft.ContainerRegistry/registries/gtazureContainerRegistry
 
       # Build and push the Docker image
       - name: Build and push Docker image
         run: |
-          docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:latest -f ${{ env.DOCKER_FILE_PATH }} .
-          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.DOCKER_IMAGE_NAME }}:latest
+          docker build -t gtazureContainerRegistry.azurecr.io/your-app-name:latest -f Dockerfile .
+          docker push gtazureContainerRegistry.azurecr.io/your-app-name:latest
 
       # Set AKS context
       - name: Set AKS context
